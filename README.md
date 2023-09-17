@@ -30,5 +30,5 @@ pipenv install
 2. Rode o comando:
 
 ```
-
+python get_phishing_data.py
 ```
