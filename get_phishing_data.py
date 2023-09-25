@@ -1,5 +1,6 @@
 import re
 from urllib.parse import urlparse
+from bs4 import BeautifulSoup
 import joblib
 
 from selenium import webdriver
@@ -10,82 +11,43 @@ chrome_options = Options()
 chrome_options.add_argument('--headless')  # Executa o Chrome no modo sem interface gráfica (headless)
 driver = webdriver.Chrome(options=chrome_options)
 
-# Função para extrair características de um site
+# Função para extrair características relacionadas à URL
+def extract_url_features(url, parsed_url):
+    return {
+        'NumDots': url.count("."),
+        'SubdomainLevel': len(parsed_url.hostname.split(".")) - 2,
+        'PathLevel': len(parsed_url.path.split("/")) - 1,
+        'UrlLength': len(url),
+        'NumDash': url.count("-"),
+        'NumDashInHostname': parsed_url.hostname.count("-"),
+        'AtSymbol': int("@" in url),
+        'TildeSymbol': int("~" in url),
+        'NumUnderscore': url.count("_"),
+        'NumPercent': url.count("%"),
+        'NumQueryComponents': len(parsed_url.query.split("&")),
+        'NumAmpersand': url.count("&"),
+        'NumHash': url.count("#"),
+        'NumNumericChars': sum(c.isdigit() for c in url),
+        'NoHttps': int(not url.startswith("https://")),
+        'RandomString': int(bool(re.search(r'[0-9a-f]{8}', url))),
+        'IpAddress': int(bool(re.match(r'\d+\.\d+\.\d+\.\d+', parsed_url.netloc))),
+        'DomainInSubdomains': int(parsed_url.netloc.count(".") > 1),
+        'DomainInPaths': int(parsed_url.path.count(parsed_url.netloc) > 0),
+        'HttpsInHostname': int("https" in parsed_url.hostname),
+        'HostnameLength': len(parsed_url.hostname),
+        'PathLength': len(parsed_url.path),
+        'QueryLength': len(parsed_url.query),
+        'DoubleSlashInPath': int("//" in parsed_url.path),
+        'SubdomainLevelRT': len(parsed_url.hostname.split(".")) - 2,
+        'UrlLengthRT': len(url)
+    }
+
 def extract_features(url):
-    try:
-        # Passo 1: Abre o site no navegador
-        driver.get(url)
-
-        # Passo 2: Extrai características básicas
-        url_length = len(url)
-
-        # Passo 3: Extrai características relacionadas à URL
-        parsed_url = urlparse(url)
-        path_length = len(parsed_url.path)
-
-        # Passo 4: Extrai características de conteúdo HTML
-
-        # Passo 5: Analisa recursos externos (por exemplo, imagens) em busca de domínios suspeitos
-
-        # Passo 6: Extrai características baseadas em texto
-
-        # Retorna um dicionário de características extraídas
-        features = {
-            'NumDots': url.count("."),
-            'SubdomainLevel': len(parsed_url.hostname.split(".")) - 2,  # Subtrai 2 para o domínio principal e TLD
-            'PathLevel': len(parsed_url.path.split("/")) - 1,  # Subtrai 1 para o primeiro elemento vazio
-            'UrlLength': url_length,
-            'NumDash': url.count("-"),
-            'NumDashInHostname': parsed_url.hostname.count("-"),
-            'AtSymbol': int("@" in url),
-            'TildeSymbol': int("~" in url),
-            'NumUnderscore': url.count("_"),
-            'NumPercent': url.count("%"),
-            'NumQueryComponents': len(parsed_url.query.split("&")),
-            'NumAmpersand': url.count("&"),
-            'NumHash': url.count("#"),
-            'NumNumericChars': sum(c.isdigit() for c in url),
-            'NoHttps': int(not url.startswith("https://")),
-            'RandomString': int(bool(re.search(r'[0-9a-f]{8}', url))),
-            'IpAddress': int(bool(re.match(r'\d+\.\d+\.\d+\.\d+', parsed_url.netloc))),
-            'DomainInSubdomains': int(parsed_url.netloc.count(".") > 1),
-            'DomainInPaths': int(parsed_url.path.count(parsed_url.netloc) > 0),
-            'HttpsInHostname': int("https" in parsed_url.hostname),
-            'HostnameLength': len(parsed_url.hostname),
-            'PathLength': path_length,
-            'QueryLength': len(parsed_url.query),
-            'DoubleSlashInPath': int("//" in parsed_url.path),
-            'NumSensitiveWords': 0,  # Adicionar lógica para esta característica
-            'EmbeddedBrandName': 0,  # Adicionar lógica para esta característica
-            'PctExtHyperlinks': 0,  # Adicionar lógica para esta característica
-            'PctExtResourceUrls': 0,  # Adicionar lógica para esta característica
-            'ExtFavicon': 0,  # Adicionar lógica para esta característica
-            'InsecureForms': 0,  # Adicionar lógica para esta característica
-            'RelativeFormAction': 0,  # Adicionar lógica para esta característica
-            'ExtFormAction': 0,  # Adicionar lógica para esta característica
-            'AbnormalFormAction': 0,  # Adicionar lógica para esta característica
-            'PctNullSelfRedirectHyperlinks': 0,  # Adicionar lógica para esta característica
-            'FrequentDomainNameMismatch': 0,  # Adicionar lógica para esta característica
-            'FakeLinkInStatusBar': 0,  # Adicionar lógica para esta característica
-            'RightClickDisabled': 0,  # Adicionar lógica para esta característica
-            'PopUpWindow': 0,  # Adicionar lógica para esta característica
-            'SubmitInfoToEmail': 0,  # Adicionar lógica para esta característica
-            'IframeOrFrame': 0,  # Adicionar lógica para esta característica
-            'MissingTitle': 0,  # Adicionar lógica para esta característica
-            'ImagesOnlyInForm': 0,  # Adicionar lógica para esta característica
-            'SubdomainLevelRT': 0,  # Adicionar lógica para esta característica
-            'UrlLengthRT': 0,  # Adicionar lógica para esta característica
-            'PctExtResourceUrlsRT': 0,  # Adicionar lógica para esta característica
-            'AbnormalExtFormActionR': 0,  # Adicionar lógica para esta característica
-            'ExtMetaScriptLinkRT': 0,  # Adicionar lógica para esta característica
-            'PctExtNullSelfRedirectHyperlinksRT': 0  # Adicionar lógica para esta característica
-        }
-
-        return features
-
-    except Exception as e:
-        print(f"Erro ao extrair características de {url}: {str(e)}")
-        return None
+    features = {}
+    parsed_url = urlparse(url)
+    features.update(extract_url_features(url, parsed_url))    
+    
+    return features
 
 # Função para carregar o modelo MLP
 def load_mlp_model(model_path):
