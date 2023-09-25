@@ -6,12 +6,44 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from collections import Counter
+
 
 # Inicialize o WebDriver do Chrome
 chrome_options = Options()
 # Executa o Chrome no modo sem interface gráfica (headless)
 chrome_options.add_argument('--headless')
 driver = webdriver.Chrome(options=chrome_options)
+
+
+def get_pct_ext_hyperlinks(soup, site_url):
+    hyperlinks = [a['href'] for a in soup.find_all('a', href=True)]
+    count_invalid = 0
+    total_links = len(hyperlinks)
+
+    for link in hyperlinks:
+        if link == "" or link == "#" or link == site_url or link.startswith("file://"):
+            count_invalid += 1
+
+    if total_links > 0:
+        pct_null_self_redirect = (count_invalid / total_links) * 100
+    else:
+        pct_null_self_redirect = 0
+
+    return pct_null_self_redirect
+
+
+def get_frequent_domain_name_mismatch(soup, parsed_url):
+    hyperlinks = [a['href'] for a in soup.find_all('a', href=True)]
+
+    domains = [urlparse(link).netloc for link in hyperlinks if urlparse(
+        link).netloc != ""]
+    domain_count = Counter(domains)
+    most_frequent_domain = domain_count.most_common(
+        1)[0][0] if domain_count else ""
+
+    site_domain = parsed_url.netloc
+    return 1 if most_frequent_domain and most_frequent_domain != site_domain else 0
 
 
 def extract_url_features(url, parsed_url):
@@ -50,7 +82,7 @@ def extract_html_features(soup, parsed_url):
     num_sensitive_words = sum(soup.text.lower().count(word)
                               for word in sensitive_words)
 
-    brand_name = "google"  # Substitua pelo nome da marca que você está verificando
+    brand_name = "google"  # TO DO: Ajustar pra essa variável ser uma lista
     embedded_brand_name = int(brand_name.lower() in soup.text.lower())
 
     abnormal_ext_form_action_r = sum(1 for form in soup.find_all('form') if urlparse(
@@ -105,19 +137,11 @@ def extract_external_features(soup, parsed_url):
         ext_resources / total_resources) * 100 if total_resources else 0
 
     total_hyperlinks = len(soup.find_all('a'))
-    ext_hyperlinks = sum(1 for a in soup.find_all(
-        'a') if urlparse(a['href']).netloc != parsed_url.netloc)
     null_self_redirect_hyperlinks = sum(1 for a in soup.find_all(
         'a') if a['href'] == "#" or a['href'] == parsed_url.path)
 
-    pct_ext_hyperlinks = (ext_hyperlinks / total_hyperlinks) * \
-        100 if total_hyperlinks else 0
     pct_null_self_redirect_hyperlinks = (
         null_self_redirect_hyperlinks / total_hyperlinks) * 100 if total_hyperlinks else 0
-
-    domain_name = parsed_url.hostname.split(".")[-2]
-    frequent_domain_name_mismatch = sum(
-        1 for a in soup.find_all('a') if domain_name not in a['href'])
 
     fake_link_in_status_bar = sum(
         1 for a in soup.find_all('a', onmouseover=True))
@@ -130,9 +154,9 @@ def extract_external_features(soup, parsed_url):
         'AbnormalFormAction': abnormal_form_action,
         'PctExtResourceUrls': pct_ext_resource_urls,
         'PctExtResourceUrlsRT': pct_ext_resource_urls_rt,
-        'PctExtHyperlinks': pct_ext_hyperlinks,
+        'PctExtHyperlinks': get_pct_ext_hyperlinks(soup, parsed_url),
         'PctNullSelfRedirectHyperlinks': pct_null_self_redirect_hyperlinks,
-        'FrequentDomainNameMismatch': frequent_domain_name_mismatch,
+        'FrequentDomainNameMismatch': get_frequent_domain_name_mismatch(soup, parsed_url),
         'FakeLinkInStatusBar': fake_link_in_status_bar
     }
 
@@ -140,6 +164,8 @@ def extract_external_features(soup, parsed_url):
 def extract_features(url):
     features = {}
     parsed_url = urlparse(url)
+
+    print(parsed_url, '\n')
     soup = BeautifulSoup(driver.page_source, 'html.parser')
 
     features.update(extract_url_features(url, parsed_url))
@@ -166,7 +192,6 @@ def get_scaled_features(features):
     # Aplica one-hot encoding
     df = pd.get_dummies(df, columns=categorical_cols)
 
-    # List of all expected columns
     expected_columns = ['NumDots', 'SubdomainLevel', 'PathLevel', 'UrlLength', 'NumDash',
                         'NumDashInHostname', 'AtSymbol', 'TildeSymbol', 'NumUnderscore',
                         'NumPercent', 'NumQueryComponents', 'NumAmpersand', 'NumHash',
@@ -191,7 +216,6 @@ def get_scaled_features(features):
                         'PctExtNullSelfRedirectHyperlinksRT_1.0'
                         ]
 
-    # Add missing columns and fill with zeros
     for col in expected_columns:
         if col not in df.columns:
             df[col] = 0
@@ -199,10 +223,7 @@ def get_scaled_features(features):
     # Reordena as colunas
     df = df[expected_columns]
 
-    # Inicializa escalonador
     scaler = joblib.load('./utils/scaler.joblib')
-
-    # Escalona as colunas numéricas
     df[cols_to_scale] = scaler.transform(df[cols_to_scale])
 
     return df.values
@@ -235,7 +256,6 @@ if __name__ == "__main__":
             prediction = mlp_model.predict(scaled_features)
             probabilities = mlp_model.predict_proba(scaled_features)
 
-            # Print probabilities for the first sample
             print("Probabilidades:", probabilities[0], '\n')
 
             if prediction[0] == 1:
