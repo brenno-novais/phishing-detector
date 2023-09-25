@@ -71,6 +71,48 @@ def extract_html_features(soup, parsed_url):
         'ExtMetaScriptLinkRT': ext_meta_script_link_rt,
         'PctExtNullSelfRedirectHyperlinksRT': pct_ext_null_self_redirect_hyperlinks_rt
     }
+
+# Função para extrair características de recursos externos e formulários
+def extract_external_features(soup, parsed_url):
+    favicon = soup.find("link", rel="icon")
+    ext_favicon = 1 if favicon and urlparse(favicon['href']).netloc != parsed_url.netloc else 0
+
+    insecure_forms = sum(1 for form in soup.find_all('form') if not form['action'].startswith('https'))
+    relative_form_action = sum(1 for form in soup.find_all('form') if not form['action'].startswith(('http', 'www')))
+    ext_form_action = sum(1 for form in soup.find_all('form') if urlparse(form['action']).netloc != parsed_url.netloc)
+    abnormal_form_action = sum(1 for form in soup.find_all('form') if not form['action'] or form['action'] == parsed_url.path)
+    
+    total_resources = len(soup.find_all(['img', 'script', 'link']))
+    ext_resources = sum(1 for tag in soup.find_all(['img', 'script', 'link']) if urlparse(tag['src' if tag.name == 'img' else 'href']).netloc != parsed_url.netloc)
+    pct_ext_resource_urls = (ext_resources / total_resources) * 100 if total_resources else 0
+    pct_ext_resource_urls_rt = (ext_resources / total_resources) * 100 if total_resources else 0
+
+    total_hyperlinks = len(soup.find_all('a'))
+    ext_hyperlinks = sum(1 for a in soup.find_all('a') if urlparse(a['href']).netloc != parsed_url.netloc)
+    null_self_redirect_hyperlinks = sum(1 for a in soup.find_all('a') if a['href'] == "#" or a['href'] == parsed_url.path)
+    
+    pct_ext_hyperlinks = (ext_hyperlinks / total_hyperlinks) * 100 if total_hyperlinks else 0
+    pct_null_self_redirect_hyperlinks = (null_self_redirect_hyperlinks / total_hyperlinks) * 100 if total_hyperlinks else 0
+    
+    domain_name = parsed_url.hostname.split(".")[-2]
+    frequent_domain_name_mismatch = sum(1 for a in soup.find_all('a') if domain_name not in a['href'])
+    
+    fake_link_in_status_bar = sum(1 for a in soup.find_all('a', onmouseover=True))
+    
+    return {
+        'ExtFavicon': ext_favicon,
+        'InsecureForms': insecure_forms,
+        'RelativeFormAction': relative_form_action,
+        'ExtFormAction': ext_form_action,
+        'AbnormalFormAction': abnormal_form_action,
+        'PctExtResourceUrls': pct_ext_resource_urls,
+        'PctExtResourceUrlsRT': pct_ext_resource_urls_rt,
+        'PctExtHyperlinks': pct_ext_hyperlinks,
+        'PctNullSelfRedirectHyperlinks': pct_null_self_redirect_hyperlinks,
+        'FrequentDomainNameMismatch': frequent_domain_name_mismatch,
+        'FakeLinkInStatusBar': fake_link_in_status_bar
+    }
+
 def extract_features(url):
     features = {}
     parsed_url = urlparse(url)
@@ -78,6 +120,7 @@ def extract_features(url):
     
     features.update(extract_url_features(url, parsed_url))    
     features.update(extract_html_features(soup, parsed_url))
+    features.update(extract_external_features(soup, parsed_url))
     
     return features
 
