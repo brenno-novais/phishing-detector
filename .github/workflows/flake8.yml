@@ -3,10 +3,10 @@ name: Flake8
 on:
   push:
     branches:
-      - main # Replace with your default branch if not 'main'
+      - main
   pull_request:
     branches:
-      - main # Replace with your default branch if not 'main'
+      - main
 
 jobs:
   flake8:
@@ -26,4 +26,4 @@ jobs:
           pip install flake8
 
       - name: Run Flake8
-        run: flake8 . # Adjust the path as needed
+        run: flake8 . --max-line-length=120
