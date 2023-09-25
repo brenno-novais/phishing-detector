@@ -5,6 +5,7 @@ import joblib
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+import pandas as pd
 
 # Inicialize o WebDriver do Chrome
 chrome_options = Options()
@@ -124,6 +125,58 @@ def extract_features(url):
     
     return features
 
+def get_scaled_features(features):
+    categorical_cols = ['AbnormalFormAction', 'SubdomainLevelRT', 'UrlLengthRT', 'PctExtResourceUrlsRT', 'AbnormalExtFormActionR', 'ExtMetaScriptLinkRT', 'PctExtNullSelfRedirectHyperlinksRT']
+    discrete_cols = ['NumDots', 'SubdomainLevel', 'PathLevel', 'UrlLength', 'NumDash', 'NumDashInHostname', 'NumUnderscore', 'NumPercent', 'NumQueryComponents', 'NumAmpersand', 'NumHash', 'NumNumericChars', 'HostnameLength', 'PathLength', 'QueryLength', 'NumSensitiveWords']
+    continuous_cols = ['PctExtHyperlinks', 'PctExtResourceUrls', 'PctNullSelfRedirectHyperlinks']
+    cols_to_scale = discrete_cols + continuous_cols
+
+    df = pd.DataFrame([features])
+
+    # Aplica one-hot encoding
+    df = pd.get_dummies(df, columns=categorical_cols)
+
+    # List of all expected columns
+    expected_columns = ['NumDots', 'SubdomainLevel', 'PathLevel', 'UrlLength', 'NumDash',
+       'NumDashInHostname', 'AtSymbol', 'TildeSymbol', 'NumUnderscore',
+       'NumPercent', 'NumQueryComponents', 'NumAmpersand', 'NumHash',
+       'NumNumericChars', 'NoHttps', 'RandomString', 'IpAddress',
+       'DomainInSubdomains', 'DomainInPaths', 'HttpsInHostname',
+       'HostnameLength', 'PathLength', 'QueryLength', 'DoubleSlashInPath',
+       'NumSensitiveWords', 'EmbeddedBrandName', 'PctExtHyperlinks',
+       'PctExtResourceUrls', 'ExtFavicon', 'InsecureForms',
+       'RelativeFormAction', 'ExtFormAction', 'PctNullSelfRedirectHyperlinks',
+       'FrequentDomainNameMismatch', 'FakeLinkInStatusBar',
+       'RightClickDisabled', 'PopUpWindow', 'SubmitInfoToEmail',
+       'IframeOrFrame', 'MissingTitle', 'ImagesOnlyInForm',
+       'AbnormalFormAction_0.0', 'AbnormalFormAction_1.0',
+       'SubdomainLevelRT_-1.0', 'SubdomainLevelRT_0.0', 'SubdomainLevelRT_1.0',
+       'UrlLengthRT_-1.0', 'UrlLengthRT_0.0', 'UrlLengthRT_1.0',
+       'PctExtResourceUrlsRT_-1.0', 'PctExtResourceUrlsRT_0.0',
+       'PctExtResourceUrlsRT_1.0', 'AbnormalExtFormActionR_-1.0',
+       'AbnormalExtFormActionR_0.0', 'AbnormalExtFormActionR_1.0',
+       'ExtMetaScriptLinkRT_-1.0', 'ExtMetaScriptLinkRT_0.0',
+       'ExtMetaScriptLinkRT_1.0', 'PctExtNullSelfRedirectHyperlinksRT_-1.0',
+       'PctExtNullSelfRedirectHyperlinksRT_0.0',
+       'PctExtNullSelfRedirectHyperlinksRT_1.0'
+    ]
+
+    # Add missing columns and fill with zeros
+    for col in expected_columns:
+        if col not in df.columns:
+            df[col] = 0
+
+    # Reordena as colunas
+    df = df[expected_columns]
+
+    # Inicializa escalonador
+    scaler = joblib.load('scaler.joblib')
+
+    # Escalona as colunas numéricas
+    df[cols_to_scale] = scaler.transform(df[cols_to_scale])
+
+    return df.values
+
 # Função para carregar o modelo MLP
 def load_mlp_model(model_path):
     try:
@@ -139,12 +192,19 @@ if __name__ == "__main__":
     extracted_features = extract_features(website_url)
 
     if extracted_features:
+        scaled_features = get_scaled_features(extracted_features)
+
         mlp_model = load_mlp_model("mlp_model.pkl") 
 
-        print (extracted_features, '\n')
+        print(extracted_features, '\n')
+        print(scaled_features, '\n')
 
         if mlp_model:
-            prediction = mlp_model.predict([list(extracted_features.values())])
+            prediction = mlp_model.predict(scaled_features)
+            probabilities = mlp_model.predict_proba(scaled_features)
+
+            # Print probabilities for the first sample
+            print("Probabilidades:", probabilities[0], '\n')
 
             if prediction[0] == 1:
                 print("Site de phishing")
