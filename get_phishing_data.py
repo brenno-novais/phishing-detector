@@ -42,10 +42,42 @@ def extract_url_features(url, parsed_url):
         'UrlLengthRT': len(url)
     }
 
+# Função para extrair características de conteúdo HTML
+def extract_html_features(soup, parsed_url):
+    sensitive_words = ['login', 'bank', 'account', 'password', 'credential']
+    num_sensitive_words = sum(soup.text.lower().count(word) for word in sensitive_words)
+    
+    brand_name = "google"  # Substitua pelo nome da marca que você está verificando
+    embedded_brand_name = int(brand_name.lower() in soup.text.lower())
+    
+    abnormal_ext_form_action_r = sum(1 for form in soup.find_all('form') if urlparse(form['action']).netloc != parsed_url.netloc and not form['action'].startswith(('http', 'www')))
+    
+    ext_meta_script_link_rt = sum(1 for tag in soup.find_all(['meta', 'script', 'link']) if urlparse(tag['content' if tag.name == 'meta' else 'src' if tag.name == 'script' else 'href']).netloc != parsed_url.netloc)
+
+    total_hyperlinks = len(soup.find_all('a'))
+    ext_null_self_redirect_hyperlinks = sum(1 for a in soup.find_all('a') if a['href'] == "#" or a['href'] == parsed_url.path and urlparse(a['href']).netloc != parsed_url.netloc)
+    pct_ext_null_self_redirect_hyperlinks_rt = (ext_null_self_redirect_hyperlinks / total_hyperlinks) * 100 if total_hyperlinks else 0
+
+    return {
+        'MissingTitle': 0 if soup.title else 1,
+        'RightClickDisabled': int(len(soup.find_all("body", oncontextmenu="return false")) > 0),
+        'PopUpWindow': int(len(soup.find_all("script", string=re.compile("window\.open\("))) > 0),
+        'SubmitInfoToEmail': int(len(soup.find_all("form", action=re.compile("mailto:"))) > 0),
+        'IframeOrFrame': int(len(soup.find_all(['iframe', 'frame'])) > 0),
+        'ImagesOnlyInForm': int(len(soup.find_all('img')) == sum(len(form.find_all('img')) for form in soup.find_all('form'))),
+        'NumSensitiveWords': num_sensitive_words,
+        'EmbeddedBrandName': embedded_brand_name,
+        'AbnormalExtFormActionR': abnormal_ext_form_action_r,
+        'ExtMetaScriptLinkRT': ext_meta_script_link_rt,
+        'PctExtNullSelfRedirectHyperlinksRT': pct_ext_null_self_redirect_hyperlinks_rt
+    }
 def extract_features(url):
     features = {}
     parsed_url = urlparse(url)
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    
     features.update(extract_url_features(url, parsed_url))    
+    features.update(extract_html_features(soup, parsed_url))
     
     return features
 
