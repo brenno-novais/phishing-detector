@@ -7,6 +7,8 @@ name = "pypi"
 selenium = "*"
 wget = "*"
 scikit-learn = "==1.2.2"
+beautifulsoup4 = "*"
+pandas = "*"
 
 [dev-packages]
 
