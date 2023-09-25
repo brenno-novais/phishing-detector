@@ -170,7 +170,7 @@ def get_scaled_features(features):
     df = df[expected_columns]
 
     # Inicializa escalonador
-    scaler = joblib.load('scaler.joblib')
+    scaler = joblib.load('./utils/scaler.joblib')
 
     # Escalona as colunas numéricas
     df[cols_to_scale] = scaler.transform(df[cols_to_scale])
@@ -194,7 +194,7 @@ if __name__ == "__main__":
     if extracted_features:
         scaled_features = get_scaled_features(extracted_features)
 
-        mlp_model = load_mlp_model("mlp_model.pkl") 
+        mlp_model = load_mlp_model("./utils/mlp_model.pkl") 
 
         print(extracted_features, '\n')
         print(scaled_features, '\n')
