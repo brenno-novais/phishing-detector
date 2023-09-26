@@ -46,7 +46,7 @@ def get_popup_window(soup):
 
     tags_with_onclick = soup.find_all(attrs={"onclick": True})
 
-    if any('window.open' in tag['onclick'] for tag in tags_with_onclick):
+    if any('window.open' in tag.get('onclick', '') for tag in tags_with_onclick):
         return int(True)
 
     return int(False)
@@ -61,7 +61,7 @@ def get_right_click_disabled(soup):
 
     tags_with_oncontextmenu = soup.find_all(attrs={"oncontextmenu": True})
 
-    if any('return false' in tag['oncontextmenu'] for tag in tags_with_oncontextmenu):
+    if any('return false' in tag.get('oncontextmenu', '') for tag in tags_with_oncontextmenu):
         return int(True)
 
     return int(False)
@@ -115,7 +115,7 @@ def pct_ext_resource_urls(soup, parsed_url, apply_threshold=False):
 
 
 def get_pct_ext_hyperlinks(soup, parsed_url):
-    hyperlinks = [a['href'] for a in soup.find_all('a', href=True)]
+    hyperlinks = [a.get('href', '') for a in soup.find_all('a', href=True)]
     count_invalid = 0
     total_links = len(hyperlinks)
 
@@ -146,7 +146,7 @@ def get_pct_null_self_redirect_hyperlinks(soup, parsed_url):
 
 
 def get_frequent_domain_name_mismatch(soup, parsed_url):
-    hyperlinks = [a['href'] for a in soup.find_all('a', href=True)]
+    hyperlinks = [a.get('href', '') for a in soup.find_all('a', href=True)]
 
     domains = [urlparse(link).netloc for link in hyperlinks if urlparse(
         link).netloc != ""]
@@ -201,7 +201,7 @@ def extract_html_features(soup, parsed_url):
 
     total_hyperlinks = len(soup.find_all('a'))
     ext_null_self_redirect_hyperlinks = sum(1 for a in soup.find_all(
-        'a') if a['href'] == "#" or a['href'] == parsed_url.path and urlparse(a['href']).netloc != parsed_url.netloc)
+        'a') if a.get('href', '') == "#" or a.get('href', '') == parsed_url.path and urlparse(a.get('href', '')).netloc != parsed_url.netloc)
     pct_ext_null_self_redirect_hyperlinks_rt = (
         ext_null_self_redirect_hyperlinks / total_hyperlinks) * 100 if total_hyperlinks else 0
 
@@ -223,13 +223,13 @@ def extract_html_features(soup, parsed_url):
 def extract_external_features(soup, parsed_url):
     favicon = soup.find("link", rel="icon")
     ext_favicon = 1 if favicon and urlparse(
-        favicon['href']).netloc != parsed_url.netloc else 0
+        favicon.get('href', '')).netloc != parsed_url.netloc else 0
 
-    insecure_forms = int(any(not form['action'].startswith(
+    insecure_forms = int(any(not form.get('action').startswith(
         'https') for form in soup.find_all('form')))
     relative_form_action = int(any(
-        not urlparse(form['action']).scheme and not urlparse(
-            form['action']).netloc
+        not urlparse(form.get('action')).scheme and not urlparse(
+            form.get('action')).netloc
         for form in soup.find_all('form')
     ))
     ext_form_action = int(any(urlparse(form.get('action', '')).netloc !=
