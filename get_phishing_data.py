@@ -120,7 +120,7 @@ def get_pct_ext_hyperlinks(soup, parsed_url):
     total_links = len(hyperlinks)
 
     for link in hyperlinks:
-        if link == "" or link == "#" or link == parsed_url or link.startswith("file://"):
+        if link == "" or link == "#" or link == parsed_url or (link is not None and link.startswith("file://")):
             count_invalid += 1
 
     if total_links > 0:
@@ -136,7 +136,7 @@ def get_pct_null_self_redirect_hyperlinks(soup, parsed_url):
 
     total_links = len(all_links)
     null_self_redirect_hyperlinks = sum(
-        1 for link in all_links if link == '' or link == '#' or link == parsed_url or link.startswith('file://')
+        1 for link in all_links if link == '' or link == '#' or link == parsed_url or (link is not None and link.startswith('file://'))
     )
 
     pct_null_self_redirect_hyperlinks = null_self_redirect_hyperlinks / \
