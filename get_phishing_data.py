@@ -225,7 +225,7 @@ def extract_external_features(soup, parsed_url):
     ext_favicon = 1 if favicon and urlparse(
         favicon.get('href', '')).netloc != parsed_url.netloc else 0
 
-    insecure_forms = int(any(not form.get('action').startswith(
+    insecure_forms = int(any(form is not None and not form.get('action').startswith(
         'https') for form in soup.find_all('form')))
     relative_form_action = int(any(
         not urlparse(form.get('action')).scheme and not urlparse(
