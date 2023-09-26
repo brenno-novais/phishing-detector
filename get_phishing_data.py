@@ -8,13 +8,119 @@ from collections import Counter
 import requests
 
 
-def get_pct_ext_hyperlinks(soup, site_url):
+def get_abnormal_ext_form_action_r(soup, parsed_url):
+    forms = soup.find_all('form')
+
+    for form in forms:
+        action_url = form.get('action', '')
+
+        if action_url == '' or action_url == 'about:blank':
+            return 1
+
+        parsed_action_url = urlparse(action_url)
+        if parsed_action_url.netloc and parsed_action_url.netloc != parsed_url.netloc:
+            return 0
+
+    return -1
+
+
+def get_images_only_in_form(soup):
+    forms = soup.find_all('form')
+
+    for form in forms:
+        text_content = form.stripped_strings
+        img_tags = form.find_all('img')
+
+        if not any(text_content) and img_tags:
+            return int(True)
+
+    return int(False)
+
+
+def get_popup_window(soup):
+    scripts = soup.find_all('script')
+
+    for script in scripts:
+        if script.string and 'window.open' in script.string:
+            return int(True)
+
+    tags_with_onclick = soup.find_all(attrs={"onclick": True})
+
+    if any('window.open' in tag['onclick'] for tag in tags_with_onclick):
+        return int(True)
+
+    return int(False)
+
+
+def get_right_click_disabled(soup):
+    scripts = soup.find_all('script')
+
+    for script in scripts:
+        if script.string and 'event.button==2' in script.string:
+            return int(True)
+
+    tags_with_oncontextmenu = soup.find_all(attrs={"oncontextmenu": True})
+
+    if any('return false' in tag['oncontextmenu'] for tag in tags_with_oncontextmenu):
+        return int(True)
+
+    return int(False)
+
+
+def get_embedded_brand_name(soup, parsed_url):
+    all_urls = [
+        tag.get('href', '') for tag in soup.find_all(['a', 'link'])
+    ] + [
+        tag.get('src', '') for tag in soup.find_all(['img', 'script'])
+    ]
+
+    domain_names = [
+        urlparse(url).netloc for url in all_urls if urlparse(url).netloc]
+
+    most_frequent_domain = Counter(domain_names).most_common(1)[
+        0][0] if domain_names else None
+
+    if most_frequent_domain:
+        embedded_brand_name = int(
+            most_frequent_domain in parsed_url.netloc or most_frequent_domain in parsed_url.path)
+    else:
+        embedded_brand_name = int(False)
+
+    return embedded_brand_name
+
+
+def pct_ext_resource_urls(soup, parsed_url, apply_threshold=False):
+    all_urls = [
+        tag.get('href', '') for tag in soup.find_all(['a', 'link'])
+    ] + [
+        tag.get('src', '') for tag in soup.find_all(['img', 'script'])
+    ]
+
+    total_urls = len(all_urls)
+    external_urls = sum(1 for url in all_urls if urlparse(
+        url).netloc and urlparse(url).netloc != parsed_url.netloc)
+
+    pct_ext_resource_urls = (
+        external_urls / total_urls) if total_urls > 0 else 0
+
+    if apply_threshold:
+        if pct_ext_resource_urls < 0.22:
+            pct_ext_resource_urls = -1
+        elif pct_ext_resource_urls < 0.61:
+            pct_ext_resource_urls = 0
+        else:
+            pct_ext_resource_urls = 1
+
+    return pct_ext_resource_urls
+
+
+def get_pct_ext_hyperlinks(soup, parsed_url):
     hyperlinks = [a['href'] for a in soup.find_all('a', href=True)]
     count_invalid = 0
     total_links = len(hyperlinks)
 
     for link in hyperlinks:
-        if link == "" or link == "#" or link == site_url or link.startswith("file://"):
+        if link == "" or link == "#" or link == parsed_url or link.startswith("file://"):
             count_invalid += 1
 
     if total_links > 0:
@@ -23,6 +129,20 @@ def get_pct_ext_hyperlinks(soup, site_url):
         pct_null_self_redirect = 0
 
     return pct_null_self_redirect
+
+
+def get_pct_null_self_redirect_hyperlinks(soup, parsed_url):
+    all_links = [tag.get('href', '') for tag in soup.find_all('a')]
+
+    total_links = len(all_links)
+    null_self_redirect_hyperlinks = sum(
+        1 for link in all_links if link == '' or link == '#' or link == parsed_url or link.startswith('file://')
+    )
+
+    pct_null_self_redirect_hyperlinks = null_self_redirect_hyperlinks / \
+        total_links if total_links > 0 else 0
+
+    return pct_null_self_redirect_hyperlinks
 
 
 def get_frequent_domain_name_mismatch(soup, parsed_url):
@@ -70,18 +190,13 @@ def extract_url_features(url, parsed_url):
 
 
 def extract_html_features(soup, parsed_url):
-    sensitive_words = ['login', 'bank', 'account', 'password', 'credential']
-    num_sensitive_words = sum(soup.text.lower().count(word)
-                              for word in sensitive_words)
-
-    brand_name = "google"  # TO DO: Ajustar pra essa variável ser uma lista
-    embedded_brand_name = int(brand_name.lower() in soup.text.lower())
-
-    abnormal_ext_form_action_r = sum(1 for form in soup.find_all('form') if urlparse(
-        form['action']).netloc != parsed_url.netloc and not form['action'].startswith(('http', 'www')))
+    sensitive_words = ['secure', 'account', 'webscr',
+                       'login', 'ebayisapi', 'signin', 'banking', 'confirm']
+    num_sensitive_words = sum(
+        1 for word in sensitive_words if word in soup.get_text().lower())
 
     ext_meta_script_link_rt = sum(1 for tag in soup.find_all(['meta', 'script', 'link']) if urlparse(
-        tag['content' if tag.name == 'meta' else 'src' if tag.name == 'script' else 'href']).
+        tag.get('content' if tag.name == 'meta' else 'src' if tag.name == 'script' else 'href')).
         netloc != parsed_url.netloc)
 
     total_hyperlinks = len(soup.find_all('a'))
@@ -92,15 +207,14 @@ def extract_html_features(soup, parsed_url):
 
     return {
         'MissingTitle': 0 if soup.title else 1,
-        'RightClickDisabled': int(len(soup.find_all("body", oncontextmenu="return false")) > 0),
-        'PopUpWindow': int(len(soup.find_all("script", string=re.compile("window\.open\("))) > 0),
-        'SubmitInfoToEmail': int(len(soup.find_all("form", action=re.compile("mailto:"))) > 0),
-        'IframeOrFrame': int(len(soup.find_all(['iframe', 'frame'])) > 0),
-        'ImagesOnlyInForm': int(len(soup.find_all('img')) == sum(len(form.find_all('img')) for form in
-                                                                 soup.find_all('form'))),
+        'RightClickDisabled': get_right_click_disabled(soup),
+        'PopUpWindow': get_popup_window(soup),
+        'SubmitInfoToEmail': int(bool(soup.find_all('a', href=lambda x: x and x.startswith('mailto:')))),
+        'IframeOrFrame': int(bool(soup.find_all(['iframe', 'frame']))),
+        'ImagesOnlyInForm': get_images_only_in_form(soup),
         'NumSensitiveWords': num_sensitive_words,
-        'EmbeddedBrandName': embedded_brand_name,
-        'AbnormalExtFormActionR': abnormal_ext_form_action_r,
+        'EmbeddedBrandName': get_embedded_brand_name(soup, parsed_url),
+        'AbnormalExtFormActionR': get_abnormal_ext_form_action_r(soup, parsed_url),
         'ExtMetaScriptLinkRT': ext_meta_script_link_rt,
         'PctExtNullSelfRedirectHyperlinksRT': pct_ext_null_self_redirect_hyperlinks_rt
     }
@@ -111,32 +225,22 @@ def extract_external_features(soup, parsed_url):
     ext_favicon = 1 if favicon and urlparse(
         favicon['href']).netloc != parsed_url.netloc else 0
 
-    insecure_forms = sum(1 for form in soup.find_all(
-        'form') if not form['action'].startswith('https'))
-    relative_form_action = sum(1 for form in soup.find_all(
-        'form') if not form['action'].startswith(('http', 'www')))
-    ext_form_action = sum(1 for form in soup.find_all(
-        'form') if urlparse(form['action']).netloc != parsed_url.netloc)
-    abnormal_form_action = sum(1 for form in soup.find_all(
-        'form') if not form['action'] or form['action'] == parsed_url.path)
+    insecure_forms = int(any(not form['action'].startswith(
+        'https') for form in soup.find_all('form')))
+    relative_form_action = int(any(
+        not urlparse(form['action']).scheme and not urlparse(
+            form['action']).netloc
+        for form in soup.find_all('form')
+    ))
+    ext_form_action = int(any(urlparse(form.get('action', '')).netloc !=
+                          parsed_url.netloc for form in soup.find_all('form')))
+    abnormal_form_action = int(any(
+        form.get('action', '') in ['#', 'about:blank', '', 'javascript:true']
+        for form in soup.find_all('form')
+    ))
 
-    total_resources = len(soup.find_all(['img', 'script', 'link']))
-    ext_resources = sum(1 for tag in soup.find_all(['img', 'script', 'link']) if urlparse(
-        tag['src' if tag.name == 'img' else 'href']).netloc != parsed_url.netloc)
-    pct_ext_resource_urls = (
-        ext_resources / total_resources) * 100 if total_resources else 0
-    pct_ext_resource_urls_rt = (
-        ext_resources / total_resources) * 100 if total_resources else 0
-
-    total_hyperlinks = len(soup.find_all('a'))
-    null_self_redirect_hyperlinks = sum(1 for a in soup.find_all(
-        'a') if a['href'] == "#" or a['href'] == parsed_url.path)
-
-    pct_null_self_redirect_hyperlinks = (
-        null_self_redirect_hyperlinks / total_hyperlinks) * 100 if total_hyperlinks else 0
-
-    fake_link_in_status_bar = sum(
-        1 for a in soup.find_all('a', onmouseover=True))
+    fake_link_in_status_bar = int(any(
+        'window.status' in tag['onmouseover'] for tag in soup.find_all(attrs={"onmouseover": True})))
 
     return {
         'ExtFavicon': ext_favicon,
@@ -144,10 +248,10 @@ def extract_external_features(soup, parsed_url):
         'RelativeFormAction': relative_form_action,
         'ExtFormAction': ext_form_action,
         'AbnormalFormAction': abnormal_form_action,
-        'PctExtResourceUrls': pct_ext_resource_urls,
-        'PctExtResourceUrlsRT': pct_ext_resource_urls_rt,
+        'PctExtResourceUrls': pct_ext_resource_urls(soup, parsed_url),
+        'PctExtResourceUrlsRT': pct_ext_resource_urls(soup, parsed_url, apply_threshold=True),
         'PctExtHyperlinks': get_pct_ext_hyperlinks(soup, parsed_url),
-        'PctNullSelfRedirectHyperlinks': pct_null_self_redirect_hyperlinks,
+        'PctNullSelfRedirectHyperlinks': get_pct_null_self_redirect_hyperlinks(soup, parsed_url),
         'FrequentDomainNameMismatch': get_frequent_domain_name_mismatch(soup, parsed_url),
         'FakeLinkInStatusBar': fake_link_in_status_bar
     }
@@ -265,5 +369,3 @@ if __name__ == "__main__":
                 print("Site de phishing")
             else:
                 print("Não é um site de phishing")
-
-    driver.quit()  # Fecha o navegador
