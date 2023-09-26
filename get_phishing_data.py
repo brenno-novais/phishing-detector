@@ -4,16 +4,8 @@ from urllib.parse import urlparse
 import joblib
 import pandas as pd
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from collections import Counter
-
-
-# Inicialize o WebDriver do Chrome
-chrome_options = Options()
-# Executa o Chrome no modo sem interface gráfica (headless)
-chrome_options.add_argument('--headless')
-driver = webdriver.Chrome(options=chrome_options)
+import requests
 
 
 def get_pct_ext_hyperlinks(soup, site_url):
@@ -161,12 +153,12 @@ def extract_external_features(soup, parsed_url):
     }
 
 
-def extract_features(url):
+def extract_features(url, html_content):
     features = {}
     parsed_url = urlparse(url)
 
     print(parsed_url, '\n')
-    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    soup = BeautifulSoup(html_content, 'html.parser')
 
     features.update(extract_url_features(url, parsed_url))
     features.update(extract_html_features(soup, parsed_url))
@@ -238,11 +230,22 @@ def load_mlp_model(model_path):
         return None
 
 
+def fetch_html_content(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.text
+    except requests.RequestException as e:
+        print(f"An error occurred: {e}")
+        return None
+
+
 # Uso de exemplo
 if __name__ == "__main__":
     # Substitua pela URL do site que deseja classificar
     website_url = "https://www.google.com/"
-    extracted_features = extract_features(website_url)
+    html_content = fetch_html_content(website_url)
+    extracted_features = extract_features(website_url, html_content)
 
     if extracted_features:
         scaled_features = get_scaled_features(extracted_features)
