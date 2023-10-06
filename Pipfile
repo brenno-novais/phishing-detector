@@ -9,6 +9,8 @@ scikit-learn = "==1.2.2"
 beautifulsoup4 = "*"
 pandas = "*"
 requests = "*"
+tldextract = "*"
+autopep8 = "*"
 
 [dev-packages]
 
