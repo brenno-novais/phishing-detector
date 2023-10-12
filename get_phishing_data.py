@@ -6,6 +6,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from collections import Counter
 import requests
+import tldextract
 
 
 def get_abnormal_ext_form_action_r(soup, parsed_url):
@@ -15,13 +16,13 @@ def get_abnormal_ext_form_action_r(soup, parsed_url):
         action_url = form.get('action', '')
 
         if action_url == '' or action_url == 'about:blank':
-            return 1
+            return -1
 
         parsed_action_url = urlparse(action_url)
         if parsed_action_url.netloc and parsed_action_url.netloc != parsed_url.netloc:
             return 0
 
-    return -1
+    return 1
 
 
 def get_images_only_in_form(soup):
@@ -67,22 +68,18 @@ def get_right_click_disabled(soup):
     return int(False)
 
 
-def get_embedded_brand_name(soup, parsed_url):
+def get_embedded_brand_name(soup, parsed_url, extract_url):
     all_urls = [
-        tag.get('href', '') for tag in soup.find_all(['a', 'link'])
-    ] + [
-        tag.get('src', '') for tag in soup.find_all(['img', 'script'])
+        tag.get('href', '') for tag in soup.find_all(['a'])
     ]
 
-    domain_names = [
-        urlparse(url).netloc for url in all_urls if urlparse(url).netloc]
+    all_domain = [tldextract.extract(
+        link).domain for link in all_urls if tldextract.extract(link).domain != ""]
 
-    most_frequent_domain = Counter(domain_names).most_common(1)[
-        0][0] if domain_names else None
-
-    if most_frequent_domain:
+    if all_domain:
+        most_frequent_name = Counter(all_domain).most_common(1)[0][0]
         embedded_brand_name = int(
-            most_frequent_domain in parsed_url.netloc or most_frequent_domain in parsed_url.path)
+            most_frequent_name in extract_url.subdomain or most_frequent_name in parsed_url.path)
     else:
         embedded_brand_name = int(False)
 
@@ -116,15 +113,15 @@ def pct_ext_resource_urls(soup, parsed_url, apply_threshold=False):
 
 def get_pct_ext_hyperlinks(soup, parsed_url):
     hyperlinks = [a.get('href', '') for a in soup.find_all('a', href=True)]
-    count_invalid = 0
+    count_hyperlink = 0
     total_links = len(hyperlinks)
 
     for link in hyperlinks:
-        if link == "" or link == "#" or link == parsed_url or (link is not None and link.startswith("file://")):
-            count_invalid += 1
+        if "http" in link.lower() and urlparse(link).netloc != parsed_url.netloc:
+            count_hyperlink += 1
 
     if total_links > 0:
-        pct_null_self_redirect = (count_invalid / total_links) * 100
+        pct_null_self_redirect = count_hyperlink / total_links
     else:
         pct_null_self_redirect = 0
 
@@ -136,7 +133,9 @@ def get_pct_null_self_redirect_hyperlinks(soup, parsed_url):
 
     total_links = len(all_links)
     null_self_redirect_hyperlinks = sum(
-        1 for link in all_links if link == '' or link == '#' or link == parsed_url or (link is not None and link.startswith('file://'))
+        1 for link in all_links if
+        link == '' or link == '#' or link == parsed_url or (
+            link is not None and link.startswith('file://'))
     )
 
     pct_null_self_redirect_hyperlinks = null_self_redirect_hyperlinks / \
@@ -158,11 +157,18 @@ def get_frequent_domain_name_mismatch(soup, parsed_url):
     return 1 if most_frequent_domain and most_frequent_domain != site_domain else 0
 
 
-def extract_url_features(url, parsed_url):
+def extract_url_features(url, parsed_url, extract_url):
+    list_tld = ['.com', 'org', '.net', '.xyz', '.name', '.biz', '.space', '.site', '.info', '.club', '.tech', '.online',
+                '.pro', '.app', '.dev', '.studio', '.agency', '.life', '.blog', '.cloud', '.link', '.io', '.tv', '.gov',
+                '.edu', '.int', '.mil', '.mobi', '.jobs', '.icu', '.tel', '.post', '.asia', '.br', '.uk', '.es', '.us',
+                '.ca', '.fr', '.in', '.cn', '.de', '.jp', '.pt']
+    sensitive_words = ['secure', 'account', 'webscr',
+                       'login', 'ebayisapi', 'signin', 'banking', 'confirm', 'senha', 'conta']
+
     return {
         'NumDots': url.count("."),
-        'SubdomainLevel': len(parsed_url.hostname.split(".")) - 2,
-        'PathLevel': len(parsed_url.path.split("/")) - 1,
+        'SubdomainLevel': 0 if not extract_url.subdomain else len(extract_url.subdomain.split(".")),
+        'PathLevel': 0 if parsed_url.path.strip("/") == "" else len(parsed_url.path.strip("/").split("/")),
         'UrlLength': len(url),
         'NumDash': url.count("-"),
         'NumDashInHostname': parsed_url.hostname.count("-"),
@@ -170,40 +176,52 @@ def extract_url_features(url, parsed_url):
         'TildeSymbol': int("~" in url),
         'NumUnderscore': url.count("_"),
         'NumPercent': url.count("%"),
-        'NumQueryComponents': len(parsed_url.query.split("&")),
+        'NumQueryComponents': 0 if parsed_url.query == "" else len(parsed_url.query.split("&")),
         'NumAmpersand': url.count("&"),
         'NumHash': url.count("#"),
         'NumNumericChars': sum(c.isdigit() for c in url),
         'NoHttps': int(not url.startswith("https://")),
-        'RandomString': int(bool(re.search(r'[0-9a-f]{8}', url))),
-        'IpAddress': int(bool(re.match(r'\d+\.\d+\.\d+\.\d+', parsed_url.netloc))),
-        'DomainInSubdomains': int(parsed_url.netloc.count(".") > 1),
-        'DomainInPaths': int(parsed_url.path.count(parsed_url.netloc) > 0),
+        'RandomString': int(bool(re.search(r'[0-9a-fA-F]{5}', url))),
+        'IpAddress': int(bool(re.match(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', parsed_url.netloc))),
+        'DomainInSubdomains': int(any(tld in extract_url.subdomain for tld in list_tld)),
+        'DomainInPaths': int(any(tld in parsed_url.path for tld in list_tld)),
         'HttpsInHostname': int("https" in parsed_url.hostname),
         'HostnameLength': len(parsed_url.hostname),
         'PathLength': len(parsed_url.path),
         'QueryLength': len(parsed_url.query),
         'DoubleSlashInPath': int("//" in parsed_url.path),
-        'SubdomainLevelRT': len(parsed_url.hostname.split(".")) - 2,
-        'UrlLengthRT': len(url)
+        'NumSensitiveWords': sum(1 for word in sensitive_words if word in url),
+        'SubdomainLevelRT': 1 if extract_url.subdomain.count(".") <= 1
+        else (0 if extract_url.subdomain.count(".") == 2 else -1),
+        'UrlLengthRT': 1 if len(url) < 54 else (0 if 54 < len(url) <= 75 else -1)
     }
 
 
-def extract_html_features(soup, parsed_url):
-    sensitive_words = ['secure', 'account', 'webscr',
-                       'login', 'ebayisapi', 'signin', 'banking', 'confirm']
-    num_sensitive_words = sum(
-        1 for word in sensitive_words if word in soup.get_text().lower())
+def extract_html_features(soup, parsed_url, extract_url):
+    list_tags = soup.find_all(['meta', 'script', 'link'])
+    total_tags = len(list_tags)
 
-    ext_meta_script_link_rt = sum(1 for tag in soup.find_all(['meta', 'script', 'link']) if urlparse(
-        tag.get('content' if tag.name == 'meta' else 'src' if tag.name == 'script' else 'href')).
-        netloc != parsed_url.netloc)
+    total_ext_meta_script_link = sum(
+        1 for tag in list_tags if (
+            tag.get('content' if tag.name == 'meta' else 'src' if tag.name ==
+                    'script' else 'href') is not None
+            and "http" in tag.get('content' if tag.name == 'meta' else 'src' if tag.name == 'script' else 'href',
+                                  '')
+            and urlparse(tag.get(
+                'content' if tag.name == 'meta' else 'src' if tag.name == 'script' else 'href')).netloc != parsed_url.netloc
+        )
+    )
+    ratio_ext = total_ext_meta_script_link / total_tags
+    ext_meta_script_link_rt = - \
+        1 if ratio_ext < 0.17 else 0 if 0.17 <= ratio_ext <= 0.81 else 1
 
     total_hyperlinks = len(soup.find_all('a'))
     ext_null_self_redirect_hyperlinks = sum(1 for a in soup.find_all(
-        'a') if a.get('href', '') == "#" or a.get('href', '') == parsed_url.path and urlparse(a.get('href', '')).netloc != parsed_url.netloc)
-    pct_ext_null_self_redirect_hyperlinks_rt = (
-        ext_null_self_redirect_hyperlinks / total_hyperlinks) * 100 if total_hyperlinks else 0
+        'a') if a.get('href', '').startswith('#') or ("http" in a.get('href', '') and urlparse(
+            a.get('href', '')).netloc != parsed_url.netloc))
+    ratio_pct = ext_null_self_redirect_hyperlinks / total_hyperlinks
+    pct_ext_null_self_redirect_hyperlinks_rt = - \
+        1 if ratio_pct < 0.31 else 0 if 0.31 <= ratio_pct <= 0.67 else 1
 
     return {
         'MissingTitle': 0 if soup.title else 1,
@@ -212,8 +230,7 @@ def extract_html_features(soup, parsed_url):
         'SubmitInfoToEmail': int(bool(soup.find_all('a', href=lambda x: x and x.startswith('mailto:')))),
         'IframeOrFrame': int(bool(soup.find_all(['iframe', 'frame']))),
         'ImagesOnlyInForm': get_images_only_in_form(soup),
-        'NumSensitiveWords': num_sensitive_words,
-        'EmbeddedBrandName': get_embedded_brand_name(soup, parsed_url),
+        'EmbeddedBrandName': get_embedded_brand_name(soup, parsed_url, extract_url),
         'AbnormalExtFormActionR': get_abnormal_ext_form_action_r(soup, parsed_url),
         'ExtMetaScriptLinkRT': ext_meta_script_link_rt,
         'PctExtNullSelfRedirectHyperlinksRT': pct_ext_null_self_redirect_hyperlinks_rt
@@ -225,15 +242,17 @@ def extract_external_features(soup, parsed_url):
     ext_favicon = 1 if favicon and urlparse(
         favicon.get('href', '')).netloc != parsed_url.netloc else 0
 
-    insecure_forms = int(any(form is not None and not form.get('action').startswith(
-        'https') for form in soup.find_all('form')))
+    cont_insecure_forms = sum(1 for form in soup.find_all('form') if (not urlparse(form.get('action', '')).scheme
+                                                                      and not parsed_url.scheme == 'https')
+                              or (urlparse(form.get('action', '')).scheme and not parsed_url.scheme == 'https'))
+    insecure_forms = 1 if cont_insecure_forms >= 1 else 0
     relative_form_action = int(any(
         not urlparse(form.get('action')).scheme and not urlparse(
             form.get('action')).netloc
         for form in soup.find_all('form')
     ))
     ext_form_action = int(any(urlparse(form.get('action', '')).netloc !=
-                          parsed_url.netloc for form in soup.find_all('form')))
+                              parsed_url.netloc for form in soup.find_all('form')))
     abnormal_form_action = int(any(
         form.get('action', '') in ['#', 'about:blank', '', 'javascript:true']
         for form in soup.find_all('form')
@@ -245,7 +264,7 @@ def extract_external_features(soup, parsed_url):
     return {
         'ExtFavicon': ext_favicon,
         'InsecureForms': insecure_forms,
-        'RelativeFormAction': relative_form_action,
+        'RelativeFormAction': relative_form_action,  # verificar
         'ExtFormAction': ext_form_action,
         'AbnormalFormAction': abnormal_form_action,
         'PctExtResourceUrls': pct_ext_resource_urls(soup, parsed_url),
@@ -260,14 +279,13 @@ def extract_external_features(soup, parsed_url):
 def extract_features(url, html_content):
     features = {}
     parsed_url = urlparse(url)
-
+    extract_url = tldextract.extract(url)
     print(parsed_url, '\n')
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    features.update(extract_url_features(url, parsed_url))
-    features.update(extract_html_features(soup, parsed_url))
+    features.update(extract_url_features(url, parsed_url, extract_url))
+    features.update(extract_html_features(soup, parsed_url, extract_url))
     features.update(extract_external_features(soup, parsed_url))
-
     return features
 
 
