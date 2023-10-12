@@ -1,0 +1,46 @@
+{
+	"info": {
+		"_postman_id": "48b1fc73-4728-4917-8bd5-6f79f57eac6c",
+		"name": "Phishing Detector",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30472427"
+	},
+	"item": [
+		{
+			"name": "Classify Website",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"url": {
+					"raw": "{{url}}/api/v1/detect?website_url=https://www.google.com/",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"detect"
+					],
+					"query": [
+						{
+							"key": "website_url",
+							"value": "https://www.google.com/",
+							"description": "URL from the website to be classified."
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
