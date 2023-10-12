@@ -93,17 +93,18 @@ class WebsiteFeatureExtrator:
         return features
 
     def extract_url_features(self):
-        list_tld = ['.com', 'org', '.net', '.xyz', '.name', '.biz', '.space', '.site', '.info', '.club', '.tech', '.online',
-                    '.pro', '.app', '.dev', '.studio', '.agency', '.life', '.blog', '.cloud', '.link', '.io', '.tv', '.gov',
-                    '.edu', '.int', '.mil', '.mobi', '.jobs', '.icu', '.tel', '.post', '.asia', '.br', '.uk', '.es', '.us',
-                    '.ca', '.fr', '.in', '.cn', '.de', '.jp', '.pt']
+        list_tld = ['.com', 'org', '.net', '.xyz', '.name', '.biz', '.space', '.site', '.info', '.club', '.tech',
+                    '.online', '.pro', '.app', '.dev', '.studio', '.agency', '.life', '.blog', '.cloud', '.link',
+                    '.io', '.tv', '.gov', '.edu', '.int', '.mil', '.mobi', '.jobs', '.icu', '.tel', '.post',
+                    '.asia', '.br', '.uk', '.es', '.us', '.ca', '.fr', '.in', '.cn', '.de', '.jp', '.pt']
         sensitive_words = ['secure', 'account', 'webscr',
                            'login', 'ebayisapi', 'signin', 'banking', 'confirm', 'senha', 'conta']
 
         return {
             'NumDots': self.website_url.count("."),
             'SubdomainLevel': 0 if not self.extract_url.subdomain else len(self.extract_url.subdomain.split(".")),
-            'PathLevel': 0 if self.parsed_url.path.strip("/") == "" else len(self.parsed_url.path.strip("/").split("/")),
+            'PathLevel': 0 if self.parsed_url.path.strip("/") == "" else len(self.parsed_url.path.strip("/").
+                                                                             split("/")),
             'UrlLength': len(self.website_url),
             'NumDash': self.website_url.count("-"),
             'NumDashInHostname': self.parsed_url.hostname.count("-"),
@@ -142,7 +143,8 @@ class WebsiteFeatureExtrator:
                 and "http" in tag.get('content' if tag.name == 'meta' else 'src' if tag.name == 'script' else 'href',
                                       '')
                 and urlparse(tag.get(
-                    'content' if tag.name == 'meta' else 'src' if tag.name == 'script' else 'href')).netloc != self.parsed_url.netloc
+                    'content' if tag.name == 'meta' else 'src' if tag.name == 'script' else 'href')).netloc !=
+                self.parsed_url.netloc
             )
         )
         ratio_ext = total_ext_meta_script_link / total_tags
@@ -175,9 +177,10 @@ class WebsiteFeatureExtrator:
         ext_favicon = 1 if favicon and urlparse(
             favicon.get('href', '')).netloc != self.parsed_url.netloc else 0
 
-        cont_insecure_forms = sum(1 for form in self.soup.find_all('form') if (not urlparse(form.get('action', '')).scheme
-                                                                               and not self.parsed_url.scheme == 'https')
-                                  or (urlparse(form.get('action', '')).scheme and not self.parsed_url.scheme == 'https'))
+        cont_insecure_forms = sum(1 for form in self.soup.find_all('form') if (not urlparse(
+            form.get('action', '')).scheme
+            and not self.parsed_url.scheme == 'https')
+            or (urlparse(form.get('action', '')).scheme and not self.parsed_url.scheme == 'https'))
         insecure_forms = 1 if cont_insecure_forms >= 1 else 0
         relative_form_action = int(any(
             not urlparse(form.get('action')).scheme and not urlparse(
