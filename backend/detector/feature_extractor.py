@@ -31,22 +31,8 @@ class WebsiteFeatureExtrator:
             return None
 
     def get_features(self):
-        categorical_cols = ['AbnormalFormAction', 'SubdomainLevelRT', 'UrlLengthRT', 'PctExtResourceUrlsRT',
-                            'AbnormalExtFormActionR', 'ExtMetaScriptLinkRT', 'PctExtNullSelfRedirectHyperlinksRT']
-
-        discrete_cols = ['NumDots', 'SubdomainLevel', 'PathLevel', 'UrlLength', 'NumDash', 'NumDashInHostname',
-                         'NumUnderscore', 'NumPercent', 'NumQueryComponents', 'NumAmpersand', 'NumHash',
-                         'NumNumericChars', 'HostnameLength', 'PathLength', 'QueryLength', 'NumSensitiveWords']
-
-        continuous_cols = ['PctExtHyperlinks',
-                           'PctExtResourceUrls', 'PctNullSelfRedirectHyperlinks']
-        cols_to_scale = discrete_cols + continuous_cols
-
         features = self.extract_features()
         df = pd.DataFrame([features])
-
-        # Aplica one-hot encoding
-        df = pd.get_dummies(df, columns=categorical_cols)
 
         expected_columns = ['NumDots', 'SubdomainLevel', 'PathLevel', 'UrlLength', 'NumDash',
                             'NumDashInHostname', 'AtSymbol', 'TildeSymbol', 'NumUnderscore',
@@ -56,33 +42,24 @@ class WebsiteFeatureExtrator:
                             'HostnameLength', 'PathLength', 'QueryLength', 'DoubleSlashInPath',
                             'NumSensitiveWords', 'EmbeddedBrandName', 'PctExtHyperlinks',
                             'PctExtResourceUrls', 'ExtFavicon', 'InsecureForms',
-                            'RelativeFormAction', 'ExtFormAction', 'PctNullSelfRedirectHyperlinks',
+                            'RelativeFormAction', 'ExtFormAction',
+                            'AbnormalFormAction', 'PctNullSelfRedirectHyperlinks',
                             'FrequentDomainNameMismatch', 'FakeLinkInStatusBar',
                             'RightClickDisabled', 'PopUpWindow', 'SubmitInfoToEmail',
                             'IframeOrFrame', 'MissingTitle', 'ImagesOnlyInForm',
-                            'AbnormalFormAction_0.0', 'AbnormalFormAction_1.0',
-                            'SubdomainLevelRT_-1.0', 'SubdomainLevelRT_0.0', 'SubdomainLevelRT_1.0',
-                            'UrlLengthRT_-1.0', 'UrlLengthRT_0.0', 'UrlLengthRT_1.0',
-                            'PctExtResourceUrlsRT_-1.0', 'PctExtResourceUrlsRT_0.0',
-                            'PctExtResourceUrlsRT_1.0', 'AbnormalExtFormActionR_-1.0',
-                            'AbnormalExtFormActionR_0.0', 'AbnormalExtFormActionR_1.0',
-                            'ExtMetaScriptLinkRT_-1.0', 'ExtMetaScriptLinkRT_0.0',
-                            'ExtMetaScriptLinkRT_1.0', 'PctExtNullSelfRedirectHyperlinksRT_-1.0',
-                            'PctExtNullSelfRedirectHyperlinksRT_0.0',
-                            'PctExtNullSelfRedirectHyperlinksRT_1.0'
+                            'SubdomainLevelRT',
+                            'UrlLengthRT',
+                            'PctExtResourceUrlsRT', 'AbnormalExtFormActionR',
+                            'ExtMetaScriptLinkRT', 'PctExtNullSelfRedirectHyperlinksRT',
                             ]
-
-        for col in expected_columns:
-            if col not in df.columns:
-                df[col] = 0
 
         # Reordena as colunas
         df = df[expected_columns]
 
-        scaler = joblib.load("detector\\resources\\scaler.joblib")
-        df[cols_to_scale] = scaler.transform(df[cols_to_scale])
+        scaler = joblib.load("detector\\resources\\scaler.pkl")
+        df = scaler.transform(df)
 
-        return df.to_numpy(), features
+        return df, features
 
     def extract_features(self):
         features = {}
