@@ -16,7 +16,7 @@ class PhishingClassifier:
 
     def __init__(self):
         self.random_forest_model = PhishingClassifier.load_random_forest_model(
-            "detector\\resources\\random_forest_model.pkl")
+            "detector/resources/random_forest_model.pkl")
 
     @classmethod
     def load_random_forest_model(cls, model_path):

@@ -56,7 +56,7 @@ class WebsiteFeatureExtrator:
         # Reordena as colunas
         df = df[expected_columns]
 
-        scaler = joblib.load("detector\\resources\\scaler.pkl")
+        scaler = joblib.load("detector/resources/scaler.pkl")
         df = scaler.transform(df)
 
         return df, features
