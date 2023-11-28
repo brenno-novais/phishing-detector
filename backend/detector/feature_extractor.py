@@ -34,24 +34,13 @@ class WebsiteFeatureExtrator:
         features = self.extract_features()
         df = pd.DataFrame([features])
 
-        expected_columns = ['NumDots', 'SubdomainLevel', 'PathLevel', 'UrlLength', 'NumDash',
-                            'NumDashInHostname', 'AtSymbol', 'TildeSymbol', 'NumUnderscore',
-                            'NumPercent', 'NumQueryComponents', 'NumAmpersand', 'NumHash',
-                            'NumNumericChars', 'NoHttps', 'RandomString', 'IpAddress',
-                            'DomainInSubdomains', 'DomainInPaths', 'HttpsInHostname',
-                            'HostnameLength', 'PathLength', 'QueryLength', 'DoubleSlashInPath',
-                            'NumSensitiveWords', 'EmbeddedBrandName', 'PctExtHyperlinks',
-                            'PctExtResourceUrls', 'ExtFavicon', 'InsecureForms',
-                            'RelativeFormAction', 'ExtFormAction',
-                            'AbnormalFormAction', 'PctNullSelfRedirectHyperlinks',
-                            'FrequentDomainNameMismatch', 'FakeLinkInStatusBar',
-                            'RightClickDisabled', 'PopUpWindow', 'SubmitInfoToEmail',
-                            'IframeOrFrame', 'MissingTitle', 'ImagesOnlyInForm',
-                            'SubdomainLevelRT',
-                            'UrlLengthRT',
-                            'PctExtResourceUrlsRT', 'AbnormalExtFormActionR',
-                            'ExtMetaScriptLinkRT', 'PctExtNullSelfRedirectHyperlinksRT',
-                            ]
+        expected_columns = ['PctExtHyperlinks', 'PctExtNullSelfRedirectHyperlinksRT',
+                            'FrequentDomainNameMismatch', 'PctExtResourceUrls',
+                            'PctNullSelfRedirectHyperlinks', 'NumDash', 'NumNumericChars',
+                            'ExtMetaScriptLinkRT', 'InsecureForms', 'SubmitInfoToEmail',
+                            'PathLevel', 'NumDots', 'PathLength', 'UrlLength', 'NumSensitiveWords',
+                            'QueryLength', 'NumQueryComponents', 'IframeOrFrame', 'HostnameLength',
+                            'ExtFavicon']
 
         # Reordena as colunas
         df = df[expected_columns]
