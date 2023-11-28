@@ -31,16 +31,27 @@ class WebsiteFeatureExtrator:
             return None
 
     def get_features(self):
+        categorical_cols = ['AbnormalFormAction', 'SubdomainLevelRT', 'UrlLengthRT', 'PctExtResourceUrlsRT',
+                            'AbnormalExtFormActionR', 'ExtMetaScriptLinkRT', 'PctExtNullSelfRedirectHyperlinksRT']
+
         features = self.extract_features()
         df = pd.DataFrame([features])
 
-        expected_columns = ['PctExtHyperlinks', 'PctExtNullSelfRedirectHyperlinksRT',
-                            'FrequentDomainNameMismatch', 'PctExtResourceUrls',
-                            'PctNullSelfRedirectHyperlinks', 'NumDash', 'NumNumericChars',
-                            'ExtMetaScriptLinkRT', 'InsecureForms', 'SubmitInfoToEmail',
-                            'PathLevel', 'NumDots', 'PathLength', 'UrlLength', 'NumSensitiveWords',
-                            'QueryLength', 'NumQueryComponents', 'IframeOrFrame', 'HostnameLength',
-                            'ExtFavicon']
+        # Aplica one-hot encoding
+        df = pd.get_dummies(df, columns=categorical_cols)
+
+        expected_columns = ['PctExtHyperlinks', 'PctExtNullSelfRedirectHyperlinksRT_-1.0',
+                            'PctExtResourceUrls', 'FrequentDomainNameMismatch',
+                            'PctNullSelfRedirectHyperlinks',
+                            'PctExtNullSelfRedirectHyperlinksRT_1.0', 'NumDash',
+                            'ExtMetaScriptLinkRT_0.0', 'NumNumericChars', 'PathLevel',
+                            'InsecureForms', 'SubmitInfoToEmail', 'ExtMetaScriptLinkRT_1.0',
+                            'NumDots', 'PathLength', 'UrlLength', 'NumQueryComponents',
+                            'QueryLength', 'NumSensitiveWords', 'IframeOrFrame']
+
+        for col in expected_columns:
+            if col not in df.columns:
+                df[col] = 0
 
         # Reordena as colunas
         df = df[expected_columns]
