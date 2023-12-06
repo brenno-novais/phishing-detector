@@ -20,8 +20,10 @@ def detect_phishing(request):
     values, _ = feature_extractor.get_features()
     result, probabilities = phishing_classifier.classify(values)
 
-    result_message = f'Esse site tem {round(probabilities[0][result] * 100, 1)}% de chance de ser ' + (
+    probability = f'{round(probabilities[0][result] * 100, 1)}%'
+    classification = 'PHISHING' if result == 1 else 'LEGITIMATE'
+    result_message = f'Esse site tem {probability} de chance de ser ' + (
         'phishing.' if result == 1 else 'legítimo.')
 
-    data = {'message': result_message}
+    data = {'message': result_message, 'result': classification, 'probability': probability }
     return JsonResponse(data, status=200)
