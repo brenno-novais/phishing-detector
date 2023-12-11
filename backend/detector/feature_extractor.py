@@ -34,13 +34,9 @@ class WebsiteFeatureExtrator:
         categorical_cols = ['AbnormalFormAction', 'SubdomainLevelRT', 'UrlLengthRT', 'PctExtResourceUrlsRT',
                             'AbnormalExtFormActionR', 'ExtMetaScriptLinkRT', 'PctExtNullSelfRedirectHyperlinksRT']
 
-        discrete_cols = ['NumDots', 'SubdomainLevel', 'PathLevel', 'UrlLength', 'NumDash', 'NumDashInHostname',
-                         'NumUnderscore', 'NumPercent', 'NumQueryComponents', 'NumAmpersand', 'NumHash',
-                         'NumNumericChars', 'HostnameLength', 'PathLength', 'QueryLength', 'NumSensitiveWords']
-
-        continuous_cols = ['PctExtHyperlinks',
-                           'PctExtResourceUrls', 'PctNullSelfRedirectHyperlinks']
-        cols_to_scale = discrete_cols + continuous_cols
+        cols_to_scale = ['PctExtHyperlinks', 'PctExtResourceUrls', 'PctNullSelfRedirectHyperlinks',
+                         'NumDash', 'NumNumericChars', 'PathLevel', 'NumDots', 'PathLength', 'UrlLength',
+                         'NumQueryComponents', 'QueryLength', 'NumSensitiveWords']
 
         features = self.extract_features()
         df = pd.DataFrame([features])
@@ -48,29 +44,14 @@ class WebsiteFeatureExtrator:
         # Aplica one-hot encoding
         df = pd.get_dummies(df, columns=categorical_cols)
 
-        expected_columns = ['NumDots', 'SubdomainLevel', 'PathLevel', 'UrlLength', 'NumDash',
-                            'NumDashInHostname', 'AtSymbol', 'TildeSymbol', 'NumUnderscore',
-                            'NumPercent', 'NumQueryComponents', 'NumAmpersand', 'NumHash',
-                            'NumNumericChars', 'NoHttps', 'RandomString', 'IpAddress',
-                            'DomainInSubdomains', 'DomainInPaths', 'HttpsInHostname',
-                            'HostnameLength', 'PathLength', 'QueryLength', 'DoubleSlashInPath',
-                            'NumSensitiveWords', 'EmbeddedBrandName', 'PctExtHyperlinks',
-                            'PctExtResourceUrls', 'ExtFavicon', 'InsecureForms',
-                            'RelativeFormAction', 'ExtFormAction', 'PctNullSelfRedirectHyperlinks',
-                            'FrequentDomainNameMismatch', 'FakeLinkInStatusBar',
-                            'RightClickDisabled', 'PopUpWindow', 'SubmitInfoToEmail',
-                            'IframeOrFrame', 'MissingTitle', 'ImagesOnlyInForm',
-                            'AbnormalFormAction_0.0', 'AbnormalFormAction_1.0',
-                            'SubdomainLevelRT_-1.0', 'SubdomainLevelRT_0.0', 'SubdomainLevelRT_1.0',
-                            'UrlLengthRT_-1.0', 'UrlLengthRT_0.0', 'UrlLengthRT_1.0',
-                            'PctExtResourceUrlsRT_-1.0', 'PctExtResourceUrlsRT_0.0',
-                            'PctExtResourceUrlsRT_1.0', 'AbnormalExtFormActionR_-1.0',
-                            'AbnormalExtFormActionR_0.0', 'AbnormalExtFormActionR_1.0',
-                            'ExtMetaScriptLinkRT_-1.0', 'ExtMetaScriptLinkRT_0.0',
-                            'ExtMetaScriptLinkRT_1.0', 'PctExtNullSelfRedirectHyperlinksRT_-1.0',
-                            'PctExtNullSelfRedirectHyperlinksRT_0.0',
-                            'PctExtNullSelfRedirectHyperlinksRT_1.0'
-                            ]
+        expected_columns = ['PctExtHyperlinks', 'PctExtNullSelfRedirectHyperlinksRT_-1.0',
+                            'PctExtResourceUrls', 'FrequentDomainNameMismatch',
+                            'PctNullSelfRedirectHyperlinks',
+                            'PctExtNullSelfRedirectHyperlinksRT_1.0', 'NumDash',
+                            'ExtMetaScriptLinkRT_0.0', 'NumNumericChars', 'PathLevel',
+                            'InsecureForms', 'SubmitInfoToEmail', 'ExtMetaScriptLinkRT_1.0',
+                            'NumDots', 'PathLength', 'UrlLength', 'NumQueryComponents',
+                            'QueryLength', 'NumSensitiveWords', 'IframeOrFrame']
 
         for col in expected_columns:
             if col not in df.columns:
