@@ -82,7 +82,7 @@ class WebsiteFeatureExtrator:
         scaler = joblib.load("detector/resources/scaler.pkl")
         df[cols_to_scale] = scaler.transform(df[cols_to_scale])
 
-        return df.to_numpy(), features
+        return df, features
 
     def extract_features(self):
         features = {}
@@ -155,7 +155,7 @@ class WebsiteFeatureExtrator:
         ext_null_self_redirect_hyperlinks = sum(1 for a in self.soup.find_all(
             'a') if a.get('href', '').startswith('#') or ("http" in a.get('href', '') and urlparse(
                 a.get('href', '')).netloc != self.parsed_url.netloc))
-        ratio_pct = ext_null_self_redirect_hyperlinks / total_hyperlinks
+        ratio_pct = ext_null_self_redirect_hyperlinks / total_hyperlinks if total_hyperlinks > 0 else 0
         pct_ext_null_self_redirect_hyperlinks_rt = \
             1.0 if ratio_pct < 0.31 else 0.0 if 0.31 <= ratio_pct <= 0.67 else -1.0
 
