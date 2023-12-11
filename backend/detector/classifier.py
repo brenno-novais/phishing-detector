@@ -15,11 +15,11 @@ class PredictionError(Exception):
 class PhishingClassifier:
 
     def __init__(self):
-        self.mlp_model = PhishingClassifier.load_mlp_model(
-            "detector\\resources\\mlp_model.pkl")
+        self.random_forest_model = PhishingClassifier.load_random_forest_model(
+            "detector/resources/random_forest_model.pkl")
 
     @classmethod
-    def load_mlp_model(cls, model_path):
+    def load_random_forest_model(cls, model_path):
         try:
             model = joblib.load(model_path)
             return model
@@ -29,8 +29,8 @@ class PhishingClassifier:
 
     def classify(self, features):
         try:
-            prediction = self.mlp_model.predict(features)
-            probabilities = self.mlp_model.predict_proba(features)
+            prediction = self.random_forest_model.predict(features)
+            probabilities = self.random_forest_model.predict_proba(features)
 
             if prediction[0] == 1:
                 return (PHISHING, probabilities)
