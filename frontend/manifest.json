@@ -1,0 +1,35 @@
+{
+    "manifest_version": 2,
+    "name": "Phishing Detector",
+    "version": "1.0",
+    "description": "Uma extensão para detectar sites de phishing",
+    "permissions": [
+        "notifications",
+        "tabs",
+        "http://*/*",
+        "https://*/*"
+    ],    
+    "background": {
+        "scripts": ["dist/background.bundle.js"],
+        "persistent": true
+    },
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["src/content.js"]
+        }
+    ],
+    "browser_action": {
+        "default_popup": "",
+        "default_icon": {
+            "16": "src/icons/icon.png",
+            "48": "src/icons/icon.png",
+            "128": "src/icons/icon.png"
+        }
+    },
+    "icons": {
+        "16": "src/icons/icon.png",
+        "48": "src/icons/icon.png",
+        "128": "src/icons/icon.png"
+    }
+}
