@@ -2,7 +2,7 @@
 
 ### Frontend
 
-Em construção
+Veja [Frontend README](frontend/README.md)
 
 ### Backend
 
