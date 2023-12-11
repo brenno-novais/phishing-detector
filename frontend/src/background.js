@@ -5,7 +5,9 @@ const axios = require('axios');
 
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
     if (changeInfo.url) {
-        checkWebsite(changeInfo.url);
+        const urlObj = new URL(websiteUrl);
+        const mainUrl = urlObj.protocol + "//" + urlObj.hostname;
+        checkWebsite(mainUrl);
     }
 });
 
@@ -23,7 +25,7 @@ function checkWebsite(websiteUrl) {
                 type: 'basic',
                 iconUrl: './src/icons/warning.png',
                 title: Strings.notifications.attention,
-                message: Strings.notifications.phishingProbability(response.data.probability)
+                message: response.data.message
             });
     })
     .catch(error => {
