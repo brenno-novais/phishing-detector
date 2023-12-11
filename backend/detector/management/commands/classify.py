@@ -32,7 +32,7 @@ class Command(BaseCommand):
         print('====================================================================================')
         print('Classification: ' + ('PHISHING' if result == 1 else 'LEGITIMATE'))
         print('------------------------------------------------------------------------------------')
-        print('Probabilities:')
+        print('Probabilities: ', probabilities)
         print(f"   - To be legitimate: {probabilities[0][0]}")
         print(f"   - To be phishing: {probabilities[0][1]}")
         print('------------------------------------------------------------------------------------')
