@@ -34,20 +34,43 @@ class WebsiteFeatureExtrator:
         categorical_cols = ['AbnormalFormAction', 'SubdomainLevelRT', 'UrlLengthRT', 'PctExtResourceUrlsRT',
                             'AbnormalExtFormActionR', 'ExtMetaScriptLinkRT', 'PctExtNullSelfRedirectHyperlinksRT']
 
+        discrete_cols = ['NumDots', 'SubdomainLevel', 'PathLevel', 'UrlLength', 'NumDash', 'NumDashInHostname',
+                         'NumUnderscore', 'NumPercent', 'NumQueryComponents', 'NumAmpersand', 'NumHash',
+                         'NumNumericChars', 'HostnameLength', 'PathLength', 'QueryLength', 'NumSensitiveWords']
+
+        continuous_cols = ['PctExtHyperlinks',
+                           'PctExtResourceUrls', 'PctNullSelfRedirectHyperlinks']
+        cols_to_scale = discrete_cols + continuous_cols
+
         features = self.extract_features()
         df = pd.DataFrame([features])
 
         # Aplica one-hot encoding
         df = pd.get_dummies(df, columns=categorical_cols)
 
-        expected_columns = ['PctExtHyperlinks', 'PctExtNullSelfRedirectHyperlinksRT_-1.0',
-                            'PctExtResourceUrls', 'FrequentDomainNameMismatch',
-                            'PctNullSelfRedirectHyperlinks',
-                            'PctExtNullSelfRedirectHyperlinksRT_1.0', 'NumDash',
-                            'ExtMetaScriptLinkRT_0.0', 'NumNumericChars', 'PathLevel',
-                            'InsecureForms', 'SubmitInfoToEmail', 'ExtMetaScriptLinkRT_1.0',
-                            'NumDots', 'PathLength', 'UrlLength', 'NumQueryComponents',
-                            'QueryLength', 'NumSensitiveWords', 'IframeOrFrame']
+        expected_columns = ['NumDots', 'SubdomainLevel', 'PathLevel', 'UrlLength', 'NumDash',
+                            'NumDashInHostname', 'AtSymbol', 'TildeSymbol', 'NumUnderscore',
+                            'NumPercent', 'NumQueryComponents', 'NumAmpersand', 'NumHash',
+                            'NumNumericChars', 'NoHttps', 'RandomString', 'IpAddress',
+                            'DomainInSubdomains', 'DomainInPaths', 'HttpsInHostname',
+                            'HostnameLength', 'PathLength', 'QueryLength', 'DoubleSlashInPath',
+                            'NumSensitiveWords', 'EmbeddedBrandName', 'PctExtHyperlinks',
+                            'PctExtResourceUrls', 'ExtFavicon', 'InsecureForms',
+                            'RelativeFormAction', 'ExtFormAction', 'PctNullSelfRedirectHyperlinks',
+                            'FrequentDomainNameMismatch', 'FakeLinkInStatusBar',
+                            'RightClickDisabled', 'PopUpWindow', 'SubmitInfoToEmail',
+                            'IframeOrFrame', 'MissingTitle', 'ImagesOnlyInForm',
+                            'AbnormalFormAction_0.0', 'AbnormalFormAction_1.0',
+                            'SubdomainLevelRT_-1.0', 'SubdomainLevelRT_0.0', 'SubdomainLevelRT_1.0',
+                            'UrlLengthRT_-1.0', 'UrlLengthRT_0.0', 'UrlLengthRT_1.0',
+                            'PctExtResourceUrlsRT_-1.0', 'PctExtResourceUrlsRT_0.0',
+                            'PctExtResourceUrlsRT_1.0', 'AbnormalExtFormActionR_-1.0',
+                            'AbnormalExtFormActionR_0.0', 'AbnormalExtFormActionR_1.0',
+                            'ExtMetaScriptLinkRT_-1.0', 'ExtMetaScriptLinkRT_0.0',
+                            'ExtMetaScriptLinkRT_1.0', 'PctExtNullSelfRedirectHyperlinksRT_-1.0',
+                            'PctExtNullSelfRedirectHyperlinksRT_0.0',
+                            'PctExtNullSelfRedirectHyperlinksRT_1.0'
+                            ]
 
         for col in expected_columns:
             if col not in df.columns:
@@ -56,10 +79,10 @@ class WebsiteFeatureExtrator:
         # Reordena as colunas
         df = df[expected_columns]
 
-        scaler = joblib.load("detector/resources/scaler.pkl")
-        df = scaler.transform(df)
+        scaler = joblib.load("detector\\resources\\scaler.pkl")
+        df[cols_to_scale] = scaler.transform(df[cols_to_scale])
 
-        return df, features
+        return df.to_numpy(), features
 
     def extract_features(self):
         features = {}
@@ -104,9 +127,9 @@ class WebsiteFeatureExtrator:
             'QueryLength': len(self.parsed_url.query),
             'DoubleSlashInPath': int("//" in self.parsed_url.path),
             'NumSensitiveWords': sum(1 for word in sensitive_words if word in self.website_url),
-            'SubdomainLevelRT': 1 if self.extract_url.subdomain.count(".") <= 1
-            else (0 if self.extract_url.subdomain.count(".") == 2 else -1),
-            'UrlLengthRT': 1 if len(self.website_url) < 54 else (0 if 54 < len(self.website_url) <= 75 else -1)
+            'SubdomainLevelRT': 1.0 if self.extract_url.subdomain.count(".") <= 1
+            else (0.0 if self.extract_url.subdomain.count(".") == 2 else -1.0),
+            'UrlLengthRT': 1.0 if len(self.website_url) < 54 else (0.0 if 54 < len(self.website_url) <= 75 else -1.0)
         }
 
     def extract_html_features(self):
@@ -125,16 +148,16 @@ class WebsiteFeatureExtrator:
             )
         )
         ratio_ext = total_ext_meta_script_link / total_tags
-        ext_meta_script_link_rt = - \
-            1 if ratio_ext < 0.17 else 0 if 0.17 <= ratio_ext <= 0.81 else 1
+        ext_meta_script_link_rt =  \
+            1.0 if ratio_ext < 0.17 else 0.0 if 0.17 <= ratio_ext <= 0.81 else -1.0
 
         total_hyperlinks = len(self.soup.find_all('a'))
         ext_null_self_redirect_hyperlinks = sum(1 for a in self.soup.find_all(
             'a') if a.get('href', '').startswith('#') or ("http" in a.get('href', '') and urlparse(
                 a.get('href', '')).netloc != self.parsed_url.netloc))
         ratio_pct = ext_null_self_redirect_hyperlinks / total_hyperlinks
-        pct_ext_null_self_redirect_hyperlinks_rt = - \
-            1 if ratio_pct < 0.31 else 0 if 0.31 <= ratio_pct <= 0.67 else 1
+        pct_ext_null_self_redirect_hyperlinks_rt = \
+            1.0 if ratio_pct < 0.31 else 0.0 if 0.31 <= ratio_pct <= 0.67 else -1.0
 
         return {
             'MissingTitle': 0 if self.soup.title else 1,
@@ -166,7 +189,7 @@ class WebsiteFeatureExtrator:
         ))
         ext_form_action = int(any(urlparse(form.get('action', '')).netloc !=
                                   self.parsed_url.netloc for form in self.soup.find_all('form')))
-        abnormal_form_action = int(any(
+        abnormal_form_action = float(any(
             form.get('action', '') in [
                 '#', 'about:blank', '', 'javascript:true']
             for form in self.soup.find_all('form')
@@ -196,13 +219,13 @@ class WebsiteFeatureExtrator:
             action_url = form.get('action', '')
 
             if action_url == '' or action_url == 'about:blank':
-                return -1
+                return -1.0
 
             parsed_action_url = urlparse(action_url)
             if parsed_action_url.netloc and parsed_action_url.netloc != self.parsed_url.netloc:
-                return 0
+                return 0.0
 
-        return 1
+        return 1.0
 
     def get_images_only_in_form(self):
         forms = self.soup.find_all('form')
@@ -278,11 +301,11 @@ class WebsiteFeatureExtrator:
 
         if apply_threshold:
             if pct_ext_resource_urls < 0.22:
-                pct_ext_resource_urls = -1
+                pct_ext_resource_urls = 1.0
             elif pct_ext_resource_urls < 0.61:
-                pct_ext_resource_urls = 0
+                pct_ext_resource_urls = 0.0
             else:
-                pct_ext_resource_urls = 1
+                pct_ext_resource_urls = -1.0
 
         return pct_ext_resource_urls
 
