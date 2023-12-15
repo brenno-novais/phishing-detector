@@ -1,5 +1,9 @@
 # PHISHING DETECTOR <!-- omit in toc -->
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10393473.svg)](https://doi.org/10.5281/zenodo.10393473)
+[![License:
+MIT](https://img.shields.io/badge/license-MIT-green)](https://choosealicense.com/licenses/mit/)
+
 ## Description
 
 The "Phishing Detector" project is a browser extension designed for detecting website phishing. It employs a Random Forest machine learning model to assess whether websites are legitimate or fraudulent. The repository includes a frontend and backend section, each with its respective README for detailed information. The project, available on GitHub, is written primarily in Python, with some JavaScript and TypeScript. It's licensed under the MIT license.
