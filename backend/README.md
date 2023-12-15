@@ -1,41 +1,65 @@
-# Como montar o setup
+# Table of Contents
+1. [How to Set Up](#how-to-set-up)
+   - [Install Python](#1-install-and-configure-python-3100)
+   - [Clone Repository](#2-clone-this-repository-and-go-to-the-backend-folder)
+   - [Create Virtual Environment](#3-create-a-virtual-environment)
+   - [Activate Virtual Environment](#4-activate-the-virtual-environment)
+   - [Install Dependencies](#5-install-dependencies)
+2. [How to Start the Server](#how-to-start-the-server)
+   - [Start Command](#1-run-the-command)
+   - [Expected Terminal Output](#expected-terminal-output)
+3. [How to Extract and Classify a Website](#how-to-extract-and-classify-a-website)
+   - [Without Server](#1-the-first-way)
+   - [With Server](#2-the-second-way)
+4. [Project Structure and Key Files](#project-structure-and-key-files)
+   - [PIPFILE](#pipfile)
+   - [Classifier](#detectorclassifierpy)
+   - [Feature Extractor](#detectorfeature_extractorpy)
+   - [API Views](#detectorviewspy)
+   - [Resources](#detectorresources)
+   - [Command for Classification](#detectormanagementcommandsclassifypy)
+   - [Tests](#detectortestspy)
 
-1. Instalar e configurar o [Python (3.10.0)](https://www.python.org/downloads/release/python-3100/)
+# How to Set Up
 
-2. Clonar este repositório e ir para a pasta backend.
+1. Install and configure [Python (3.10.0)](https://www.python.org/downloads/release/python-3100/)
 
-3. Criar um virtual environment. Para isso, digite no prompt de comando, na pasta onde você clonou o repositório:
+2. Clone this repository and go to the backend folder.
+
+3. Create a virtual environment. To do this, type in the command prompt, in the folder where you cloned the repository:
+
 
 ```
 pip install pipenv
 ```
 
-4. Após isso, ative o venv, digitando:
+4. After that, activate the virtual environment by typing:
 
 ```
 pipenv shell
 ```
 
-> Obs: Rodar o pipenv shell é necessário toda vez que for usar o setup
+> Note: Running `pipenv shell` is necessary every time you use the setup.
 
-5. Rode o comando abaixo para instalar todas as dependências do projeto:
+5. Run the command below to install all project dependencies:
 
 ```
 pipenv install
 ```
 
-# Como ligar o servidor
+# How to Start the Server
 
-1. Rode o comando:
+1. Run the command:
+
 
 ```
 cd backend
 python manage.py runserver
 ```
 
-> Obs: É necessário que o pipenv shell esteja ativado
+> Note: It is necessary that the `pipenv shell` is active
 
-É esperado que o terminal imprima a seguinte mensagem:
+The terminal is expected to print the following message:
 
 ```
 Watching for file changes with StatReloader
@@ -48,30 +72,43 @@ Starting development server at http://127.0.0.1:8000/
 Quit the server with CTRL-BREAK.
 ```
 
-# Como extrair e classificar um site
+# How to Extract and Classify a Website
 
-Há duas formas de classificar um site:
+There are two ways to classify a website:
 
-1. A primeira forma não precisa ligar o servidor, basta rodar o comando a seguir na basta backend e com o pipenv shell ativado:
+1. The first way does not need to start the server, just run the following command in the backend folder with the `pipenv shell` active:
 
 ```
 python manage.py classify --website_url <url_do_site>
 ```
 
-> Exemplo: `python manage.py classify --website_url https://www.google.com/`
+> Example: `python manage.py classify --website_url https://www.google.com/`
 
-2. A segunda forma é com o servidor ligado. Essa é a forma que será usada em produção.
-   - É necessário instalar o [Postman](https://www.postman.com/downloads/) para fazer as chamadas à API.
-   - Crie uma conta.
-   - Importe a coleção do Postman na pasta [postman](../postman).
-   - Crie um environment com uma variável url com o valor http://127.0.0.1:8000
-   - Selecione esse environment e clique na API que foi importada pela coleção: GET Classify Website.
-   - Clique em Send para enviar uma requisição à API.
-   - Altere o site que deseja classificar na variável website_url em Params.
-   - O resultado esperado é:
+2. The second way is with the server running. This is the way it will be used in production.
+- It is necessary to install [Postman](https://www.postman.com/downloads/) to make calls to the API.
+- Create an account.
+- Import the Postman collection from the [postman](../postman) folder.
+- Create an environment with a url variable set to http://127.0.0.1:8000
+- Select this environment and click on the API that was imported by the collection: GET Classify Website.
+- Click Send to send a request to the API.
+- Change the site you want to classify in the website_url variable in Params.
+- The expected result is:
 
 ```
 {
-    "message": "Esse site tem 99.5% de chance de ser legítimo."
+    "message": "Esse site tem chance considerável de ser legítimo.",
+    "result": "LEGITIMATE";
+    "probability": "92.0%"
 }
 ```
+> Note: "Esse site tem chance considerável de ser legítimo." means "This site has a considerable chance of being legitimate.".
+
+# Project Structure and Key Files
+
+- **PIPFILE:** contains all the libraries that are being used.
+- **detector/classifier.py:** is where the Random Forest model will be loaded and the website will be classified.
+- **detector/feature_extractor.py:** is where the features necessary to classify the website will be extract.
+- **detector/views.py:** is where the API is being declared. This where the backend gets the website url, calls for the extrator, the calls the classifier and then return the results.
+- **detector/resources:** this folders contain the file where the Random Forest model and the scaler (responsible for normalizing the data) is stored. If you want to use your own model or scale, substitute this files and change the path which opens then if necessary.
+- **detector/management/commands/classify.py:** this is the command you use to classify your websites without the server to be on. See "How to Extract and Classify a Website", first item, above to learn more details.
+- **detector/tests.py:** this is where the tests are gonna be declared.
