@@ -10,7 +10,7 @@ The "Phishing Detector" project is a browser extension designed for detecting we
 
 ## How to cite
 
-NOVAIS, B. ; DOS SANTOS, C. .; TOYAMA, C..; HAYASHI, C.; BATISTA, G.; MELLO, L.; MENDES, R, & NETO, C. (2023). ANÁLISE ABRANGENTE DE PHISHING ONLINE: EXPLORANDO DADOS, MODELOS E MEDIDAS DE PROTEÇÃO PARA IDENTIFICAÇÃO DE SITES FALSOS. Escola de Artes, Ciências e Humanidades; Universidade de São Paulo. https://doi.org/10.5281/zenodo.10393473
+NOVAIS, B. ; DOS SANTOS, C. .; TOYAMA, C..; HAYASHI, C.; BATISTA, G.; MELLO, L.; MENDES, R, & NETO, C. (2023). ANÁLISE ABRANGENTE DE PHISHING ONLINE: EXPLORANDO DADOS, MODELOS E MEDIDAS DE PROTEÇÃO PARA IDENTIFICAÇÃO DE SITES FALSOS. Escola de Artes, Ciências e Humanidades; Universidade de São Paulo. DOI: https://doi.org/10.5281/zenodo.10393473
 
 ## Based on
 
