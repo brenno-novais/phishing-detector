@@ -9,6 +9,10 @@ import requests
 import tldextract
 
 
+class ExtractingFeatureError(Exception):
+    pass
+
+
 class WebsiteFeatureExtrator:
 
     def __init__(self, website_url):
@@ -42,7 +46,11 @@ class WebsiteFeatureExtrator:
                            'PctExtResourceUrls', 'PctNullSelfRedirectHyperlinks']
         cols_to_scale = discrete_cols + continuous_cols
 
-        features = self.extract_features()
+        try:
+            features = self.extract_features()
+        except Exception as e:
+            print(e)
+            raise ExtractingFeatureError("Failed to extract features from this website") from e
         df = pd.DataFrame([features])
 
         # Aplica one-hot encoding
@@ -147,7 +155,7 @@ class WebsiteFeatureExtrator:
                 self.parsed_url.netloc
             )
         )
-        ratio_ext = total_ext_meta_script_link / total_tags
+        ratio_ext = (total_ext_meta_script_link / total_tags) if total_tags > 0 else 0
         ext_meta_script_link_rt =  \
             1.0 if ratio_ext < 0.17 else 0.0 if 0.17 <= ratio_ext <= 0.81 else -1.0
 
@@ -155,7 +163,7 @@ class WebsiteFeatureExtrator:
         ext_null_self_redirect_hyperlinks = sum(1 for a in self.soup.find_all(
             'a') if a.get('href', '').startswith('#') or ("http" in a.get('href', '') and urlparse(
                 a.get('href', '')).netloc != self.parsed_url.netloc))
-        ratio_pct = ext_null_self_redirect_hyperlinks / total_hyperlinks if total_hyperlinks > 0 else 0
+        ratio_pct = (ext_null_self_redirect_hyperlinks / total_hyperlinks) if total_hyperlinks > 0 else 0
         pct_ext_null_self_redirect_hyperlinks_rt = \
             1.0 if ratio_pct < 0.31 else 0.0 if 0.31 <= ratio_pct <= 0.67 else -1.0
 
@@ -320,7 +328,7 @@ class WebsiteFeatureExtrator:
                 count_hyperlink += 1
 
         if total_links > 0:
-            pct_null_self_redirect = count_hyperlink / total_links
+            pct_null_self_redirect = (count_hyperlink / total_links) if total_links > 0 else 0
         else:
             pct_null_self_redirect = 0
 
@@ -336,8 +344,8 @@ class WebsiteFeatureExtrator:
                 link is not None and link.startswith('file://'))
         )
 
-        pct_null_self_redirect_hyperlinks = null_self_redirect_hyperlinks / \
-            total_links if total_links > 0 else 0
+        pct_null_self_redirect_hyperlinks = (null_self_redirect_hyperlinks / \
+            total_links) if total_links > 0 else 0
 
         return pct_null_self_redirect_hyperlinks
 
